@@ -1,6 +1,7 @@
 const User=require('../models/userModel');
 const bcrypt=require("bcrypt");
 const asyncHandler=require('express-async-handler')
+const jwt=require("jsonwebtoken");
 
 //@desc regitser user
 //@route Post api/users/register
@@ -42,7 +43,29 @@ const registerUser=asyncHandler(async(req,res)=>{
 //@route Post api/users/login
 //public
 const loginUser=asyncHandler(async(req,res)=>{
-    res.json({message:"Login User"});
+    const {email,password}=req.body;
+    if(!email||!password){
+        res.status.apply(400);
+        throw new Error("All fields are mandatory");
+    }
+    const user=await User.findOne({email});
+    if(user && (await bcrypt.compare(password,user.password))){
+        const accessToken=jwt.sign(
+            {
+            user:{
+                username:user.username,
+                email:user.email,
+                id:user.id
+            },   },
+            process.env.ACCESS_TOKEN_SECREAT,
+            {expiresIn:"45m"}
+            );
+        res.status(200).json({accessToken});
+    }else{
+        res.status(401);
+        throw new Error("Invalid Credentials!")
+    }
+
 })
 
 //@desc get current user
@@ -50,7 +73,7 @@ const loginUser=asyncHandler(async(req,res)=>{
 //private
 
 const currentUser=asyncHandler(async(req,res)=>{
-    res.json({message:"Current loged in user"})
+    res.json(req.user);
 })
 
 
